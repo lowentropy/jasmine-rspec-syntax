@@ -38,7 +38,7 @@ See the examples in examples/*.coffee for more detail, but here's a taste:
       it "should return something near 216", ->
         _(subject.foo()).should be_within(0.25).of(216)
       
-      # equivalently
+      # or, equivalently
       its 'foo()', -> should be_within(0.25).of(216)
 
 [Jasmine]: 		http://pivotal.github.com/jasmine/
