@@ -1,10 +1,11 @@
-var after, be_called, be_empty, be_false, be_greater_than, be_less_than, be_null, be_true, be_within, before, context, dummy_subject, equal, expect_it, expect_its, have, include, it, it_, it_should_behave_like, its, jit, last_when, let_, match, matcher, propagate, respond_to, shared_examples, shared_examples_for, subject, the, then_, when_, _, _should;
-var __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
+var after, be, be_called, be_empty, be_false, be_greater_than, be_less_than, be_null, be_true, be_within, before, contain_text, context, dummy_subject, equal, expect_it, expect_its, have, have_css_class, have_query_string, have_table_data, include, it, it_, it_should_behave_like, its, jit, last_when, let_, match, match_object, matcher, propagate, respond_to, select, shared_examples, shared_examples_for, subject, the, then_, when_, xthe, _, _should;
+var __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; }, __hasProp = Object.prototype.hasOwnProperty;
 subject = null;
 shared_examples = {};
 context = describe;
 before = beforeEach;
 after = afterEach;
+xthe = xit;
 subject = function(f) {
   return before(function() {
     return subject = f();
@@ -31,10 +32,10 @@ shared_examples_for = function(name, f) {
 it_should_behave_like = function(name, g) {
   var f;
   f = shared_examples[name];
-  if (typeof f == "function") {
+  if (typeof f === "function") {
     f();
   }
-  return typeof g == "function" ? g() : void 0;
+  return typeof g === "function" ? g() : void 0;
 };
 last_when = null;
 when_ = function(desc, f) {
@@ -44,7 +45,9 @@ then_ = function(g) {
   var desc, f;
   desc = last_when[0], f = last_when[1];
   return context("when " + desc, function() {
-    before(f);
+    if (f) {
+      before(f);
+    }
     return g();
   });
 };
@@ -58,25 +61,25 @@ dummy_subject = {
   }
 };
 it_ = function(f) {
-  return jit("asdf", function() {
+  return jit("", function() {
     var m, matcher;
     matcher = f.call(dummy_subject);
     m = matcher.complete(subject);
-    this.description = "should " + (m.description());
+    this.description = "it should " + (m.description());
     return expect(m).toBeRspec();
   });
 };
 its = function(thing, f) {
-  return jit("asdf", function() {
+  return jit("", function() {
     var m, matcher;
     matcher = f.call(dummy_subject);
     m = matcher.complete(eval("subject." + thing));
-    this.description = "" + thing + " should " + (m.description());
+    this.description = "its " + thing + " should " + (m.description());
     return expect(m).toBeRspec();
   });
 };
 the = function(thing, f) {
-  return jit("asdf", function() {
+  return jit("", function() {
     var m, matcher;
     matcher = f.call(dummy_subject);
     m = matcher.complete(eval("window." + thing));
@@ -115,31 +118,31 @@ matcher = function(f) {
     helpers = null;
     args = arguments;
     rev = {
-      description: function(f) {
-        return rev_desc = f;
+      description: function(g) {
+        return rev_desc = g;
       },
-      matches: function(f) {
-        return rev_matches = f;
+      matches: function(g) {
+        return rev_matches = g;
       },
-      message: function(f) {
-        return rev_msg = f;
+      message: function(g) {
+        return rev_msg = g;
       }
     };
     body = {
-      description: function(f) {
-        return desc = f;
+      description: function(g) {
+        return desc = g;
       },
-      matches: function(f) {
-        return matches = f;
+      matches: function(g) {
+        return matches = g;
       },
-      message: function(f) {
-        return msg = f;
+      message: function(g) {
+        return msg = g;
       },
-      reverse: function(f) {
-        return f.apply(rev, args);
+      reverse: function(g) {
+        return g.apply(rev, args);
       },
-      helpers: function(f) {
-        return helpers = f.apply(body, args);
+      helpers: function(g) {
+        return helpers = g.apply(body, args);
       }
     };
     f.apply(body, args);
@@ -151,7 +154,7 @@ matcher = function(f) {
       reverse: {
         description: rev_desc,
         complete: function(actual) {
-          var f, name, ret;
+          var ret, _fn;
           ret = {
             actual: actual,
             description: rev_desc
@@ -167,17 +170,21 @@ matcher = function(f) {
               return rev_msg.call(ret);
             };
           }
-          for (name in helpers) {
-            f = helpers[name];
-            ret[name] = function() {
-              return f.call(ret);
+          _fn = function(name, g) {
+            return ret[name] = function() {
+              return g.apply(ret, arguments);
             };
+          };
+          for (name in helpers) {
+            if (!__hasProp.call(helpers, name)) continue;
+            g = helpers[name];
+            _fn(name, g);
           }
           return ret;
         }
       },
       complete: function(actual) {
-        var f, name, ret;
+        var ret, _fn;
         ret = {
           actual: actual,
           description: desc
@@ -190,11 +197,15 @@ matcher = function(f) {
             return msg.call(ret);
           };
         }
-        for (name in helpers) {
-          f = helpers[name];
-          ret[name] = function() {
-            return f.call(ret);
+        _fn = function(name, g) {
+          return ret[name] = function() {
+            return g.apply(ret, arguments);
           };
+        };
+        for (name in helpers) {
+          if (!__hasProp.call(helpers, name)) continue;
+          g = helpers[name];
+          _fn(name, g);
         }
         return ret;
       }
@@ -217,18 +228,14 @@ respond_to = matcher(function(name) {
     });
   });
 });
-have = function(number) {
-  return {
-    items: matcher(function() {
-      this.description(function() {
-        return "contain " + number + " items";
-      });
-      return this.matches(function() {
-        return this.actual.length === number;
-      });
-    })
-  };
-};
+have = matcher(function(number, collection) {
+  this.description(function() {
+    return "contain " + number + " " + collection;
+  });
+  return this.matches(function() {
+    return this.actual[collection].length === number;
+  });
+});
 be_null = matcher(function() {
   this.description(function() {
     return "be null";
@@ -245,6 +252,7 @@ be_empty = matcher(function() {
     var x, y, _ref;
     _ref = this.actual;
     for (x in _ref) {
+      if (!__hasProp.call(_ref, x)) continue;
       y = _ref[x];
       return false;
     }
@@ -261,7 +269,7 @@ match = matcher(function(pattern) {
 });
 equal = matcher(function(expected) {
   this.description(function() {
-    return "equal " + expected;
+    return "equal " + (JSON.stringify(expected));
   });
   return this.matches(function() {
     return jasmine.getEnv().equals_(this.actual, expected);
@@ -370,3 +378,137 @@ be_within = function(tol) {
     })
   };
 };
+have_query_string = matcher(function(query) {
+  this.helpers(function() {
+    return {
+      query_part: function() {
+        return this.actual.split('?')[1];
+      }
+    };
+  });
+  this.description(function() {
+    return "have query string '" + query + "'";
+  });
+  return this.matches(function() {
+    return unescape(this.query_part()) === query;
+  });
+});
+be = matcher(function(name) {
+  this.description(function() {
+    return "be " + name;
+  });
+  return this.matches(function() {
+    return eval("this.actual.is_" + name + "()");
+  });
+});
+have_table_data = matcher(function(data) {
+  this.description(function() {
+    return "have tabular data";
+  });
+  return this.matches(function() {
+    var real, td, tr, _i, _j, _len, _len2, _ref, _ref2, _results, _results2;
+    real = function() {
+      _ref = this.actual.find('tr');
+      _results = [];
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        tr = _ref[_i];
+        _results.push(function() {
+          _ref2 = $(tr).find('td,th');
+          _results2 = [];
+          for (_j = 0, _len2 = _ref2.length; _j < _len2; _j++) {
+            td = _ref2[_j];
+            _results2.push($(td).text());
+          }
+          return _results2;
+        }());
+      }
+      return _results;
+    }.call(this);
+    return jasmine.getEnv().equals_(real, data);
+  });
+});
+have_css_class = matcher(function(name) {
+  this.description(function() {
+    return "have css class '" + name + "'";
+  });
+  this.matches(function() {
+    return this.actual.hasClass(name);
+  });
+  return this.message(function() {
+    return "Expected node to have css class '" + name + "'";
+  });
+});
+select = matcher(function(count, selector) {
+  this.helpers(function() {
+    return {
+      actual_count: function() {
+        return this.actual.find(selector).size();
+      }
+    };
+  });
+  this.description(function() {
+    return "select " + count + " elements with '" + selector + "'";
+  });
+  this.matches(function() {
+    return this.actual_count() === count;
+  });
+  return this.message(function() {
+    return "Expected node to select " + count + " elements with '" + selector + "', actually selected " + (this.actual_count());
+  });
+});
+contain_text = matcher(function(text) {
+  this.description(function() {
+    return "contain text " + text;
+  });
+  this.message(function() {
+    return "Expected node to contain text '" + text + "', was '" + (this.actual.text()) + "'";
+  });
+  return this.matches(function() {
+    return this.actual.text().strip() === text;
+  });
+});
+match_object = matcher(function(object) {
+  this.description(function() {
+    return "match " + (JSON.stringify(object));
+  });
+  this.matches(function() {
+    var key, value;
+    for (key in object) {
+      if (!__hasProp.call(object, key)) continue;
+      value = object[key];
+      if (!jasmine.getEnv().equals_(this.actual[key], value)) {
+        return false;
+      }
+    }
+    return true;
+  });
+  return this.message(function() {
+    return "Expected the object to match " + (JSON.stringify(object));
+  });
+});
+beforeEach(function() {
+  return this.addMatchers({
+    toBeRspec: function(reverse) {
+      var m;
+      m = this.actual;
+      if (m.matches()) {
+        return true;
+      } else {
+        if (m.message) {
+          this.message = m.message;
+        } else {
+          this.message = function() {
+            var not_str;
+            not_str = (reverse ? " NOT " : void 0) || " ";
+            try {
+              return "Expected " + (JSON.stringify(m.actual)) + not_str + "to " + (m.description());
+            } catch (e) {
+              return "Expected it" + not_str + "to " + (m.description());
+            }
+          };
+        }
+        return false;
+      }
+    }
+  });
+});

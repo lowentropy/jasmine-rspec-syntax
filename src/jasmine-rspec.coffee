@@ -4,6 +4,8 @@ context = describe
 before = beforeEach
 after = afterEach
 
+xthe = xit
+
 subject = (f) ->
   before -> subject = f()
 
@@ -34,7 +36,7 @@ when_ = (desc, f) ->
 then_ = (g) ->
   [desc, f] = last_when
   context "when #{desc}", ->
-    before f
+    before f if f
     g()
 
 jit = it
@@ -46,14 +48,14 @@ it_ = (f) ->
   jit "", ->
     matcher = f.call dummy_subject
     m = matcher.complete subject
-    this.description = "should #{m.description()}"
+    this.description = "it should #{m.description()}"
     expect(m).toBeRspec()
 
 its = (thing, f) ->
   jit "", ->
     matcher = f.call dummy_subject
     m = matcher.complete eval("subject.#{thing}")
-    this.description = "#{thing} should #{m.description()}"
+    this.description = "its #{thing} should #{m.description()}"
     expect(m).toBeRspec()
 
 the = (thing, f) ->
@@ -89,15 +91,15 @@ matcher = (f) ->
     helpers = null
     args = arguments
     rev =
-      description: (f) -> rev_desc = f
-      matches: (f) -> rev_matches = f
-      message: (f) -> rev_msg = f
+      description: (g) -> rev_desc = g
+      matches: (g) -> rev_matches = g
+      message: (g) -> rev_msg = g
     body =
-      description: (f) -> desc = f
-      matches: (f) -> matches = f
-      message: (f) -> msg = f
-      reverse: (f) -> f.apply(rev, args)
-      helpers: (f) -> helpers = f.apply(body, args)
+      description: (g) -> desc = g
+      matches: (g) -> matches = g
+      message: (g) -> msg = g
+      reverse: (g) -> g.apply(rev, args)
+      helpers: (g) -> helpers = g.apply(body, args)
     f.apply(body, args)
     rev_desc ||= -> "not #{desc()}"
     return(
@@ -112,8 +114,8 @@ matcher = (f) ->
           ret.matches = -> rev_matches.call(ret)
           if rev_msg
             ret.message = -> rev_msg.call(ret)
-          for name, f of helpers
-            ret[name] = -> f.call(ret)
+          for name, g of helpers
+            ret[name] = -> g.apply(ret, arguments)
           ret
       complete: (actual) ->
         ret =
@@ -122,11 +124,10 @@ matcher = (f) ->
         ret.matches = -> matches.call(ret)
         if msg
           ret.message = -> msg.call(ret)
-        for name, f of helpers
-          ret[name] = -> f.call(ret)
+        for name, g of helpers
+          ret[name] = -> g.apply(ret, arguments)
         ret
     )
-
 
 respond_to = matcher (name) ->
   @description -> "respond to .#{name}()"
@@ -134,10 +135,13 @@ respond_to = matcher (name) ->
   @message -> "Expected it to #{@description()}"
   @reverse -> @message -> "Expected it not to #{@description()}"
 
-have = (number) ->
-  items: matcher ->
-    @description -> "contain #{number} items"
-    @matches -> @actual.length == number
+have = matcher (number, collection) ->
+  @description -> "contain #{number} #{collection}"
+  @matches ->
+    if @actual[collection]
+      @actual[collection].length == number
+    else
+      @actual.length == number
 
 be_null = matcher ->
   @description -> "be null"
@@ -155,7 +159,7 @@ match = matcher (pattern) ->
   @matches -> pattern.test(@actual)
 
 equal = matcher (expected) ->
-  @description -> "equal #{expected}"
+  @description -> "equal #{JSON.stringify(expected)}"
   @matches -> jasmine.getEnv().equals_(@actual, expected)
 
 be_true = matcher ->
@@ -205,3 +209,62 @@ be_within = (tol) ->
       @description -> "be outside #{tol} of #{expected}"
       @message -> "Expected #{@actual} to be outside #{tol} of #{expected}, but was within #{@diff()}"
 
+have_query_string = matcher (query) ->
+  @helpers ->
+    query_part: -> @actual.split('?')[1]
+  @description -> "have query string '#{query}'"
+  @matches -> unescape(@query_part()) == query
+
+be = matcher (name) ->
+  @description -> "be #{name}"
+  @matches -> eval "this.actual.is_#{name}()"
+
+have_table_data = matcher (data) ->
+  @description -> "have tabular data"
+  @matches ->
+    real = for tr in @actual.find('tr')
+      $(td).text() for td in $(tr).find('td,th')
+    jasmine.getEnv().equals_(real, data)
+
+have_css_class = matcher (name) ->
+  @description -> "have css class '#{name}'"
+  @matches -> @actual.hasClass(name)
+  @message -> "Expected node to have css class '#{name}'"
+
+select = matcher (count, selector) ->
+  @helpers ->
+    actual_count: -> @actual.find(selector).size()
+  @description -> "select #{count} elements with '#{selector}'"
+  @matches -> @actual_count() == count
+  @message -> "Expected node to select #{count} elements with '#{selector}', actually selected #{@actual_count()}"
+
+contain_text = matcher (text) ->
+  @description -> "contain text #{text}"
+  @message -> "Expected node to contain text '#{text}', was '#{@actual.text()}'"
+  @matches -> @actual.text().strip() == text
+
+match_object = matcher (object) ->
+  @description -> "match #{JSON.stringify(object)}"
+  @matches ->
+    for key, value of object
+      return false unless jasmine.getEnv().equals_(@actual[key], value)
+    true
+  @message -> "Expected the object to match #{JSON.stringify(object)}"
+
+beforeEach ->
+  @addMatchers
+    toBeRspec: (reverse) ->
+      m = @actual
+      if m.matches()
+        true
+      else
+        if m.message
+          @message = m.message
+        else
+          @message = ->
+            not_str = (" NOT " if reverse) || " "
+            try
+              "Expected #{JSON.stringify(m.actual)}#{not_str}to #{m.description()}"
+            catch e
+              "Expected it#{not_str}to #{m.description()}"
+        false
