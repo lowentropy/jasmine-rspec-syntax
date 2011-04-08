@@ -102,6 +102,7 @@ matcher = (f) ->
       helpers: (g) -> helpers = g.apply(body, args)
     f.apply(body, args)
     rev_desc ||= -> "not #{desc()}"
+    _fn = (obj, name, f) -> obj[name] = -> f.apply(obj, arguments)
     return(
       description: desc
       reverse:
@@ -114,8 +115,7 @@ matcher = (f) ->
           ret.matches = -> rev_matches.call(ret)
           if rev_msg
             ret.message = -> rev_msg.call(ret)
-          for name, g of helpers
-            ret[name] = -> g.apply(ret, arguments)
+          _fn(ret, name, g) for own name, g of helpers
           ret
       complete: (actual) ->
         ret =
@@ -124,8 +124,7 @@ matcher = (f) ->
         ret.matches = -> matches.call(ret)
         if msg
           ret.message = -> msg.call(ret)
-        for name, g of helpers
-          ret[name] = -> g.apply(ret, arguments)
+        _fn(ret, name, g) for own name, g of helpers
         ret
     )
 
@@ -150,7 +149,7 @@ be_null = matcher ->
 be_empty = matcher ->
   @description -> "be empty"
   @matches ->
-    for x,y of @actual
+    for own x,y of @actual
       return false
     true
 
@@ -222,8 +221,8 @@ be = matcher (name) ->
 have_table_data = matcher (data) ->
   @description -> "have tabular data"
   @matches ->
-    real = for tr in @actual.find('tr')
-      $(td).text() for td in $(tr).find('td,th')
+    real = for own tr in @actual.find('tr')
+      $(td).text() for own td in $(tr).find('td,th')
     jasmine.getEnv().equals_(real, data)
 
 have_css_class = matcher (name) ->
@@ -246,7 +245,7 @@ contain_text = matcher (text) ->
 match_object = matcher (object) ->
   @description -> "match #{JSON.stringify(object)}"
   @matches ->
-    for key, value of object
+    for own key, value of object
       return false unless jasmine.getEnv().equals_(@actual[key], value)
     true
   @message -> "Expected the object to match #{JSON.stringify(object)}"
