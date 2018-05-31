@@ -55,5 +55,5 @@ See the examples in examples/*.coffee for more detail, but here's a taste:
           its 'balance', -> @should be_divisible_by(paycheck)
     
 
-[Jasmine]: http://pivotal.github.com/jasmine/
+[Jasmine]: https://jasmine.github.io/
 [Coffeescript]: http://jashkenas.github.com/coffee-script/
